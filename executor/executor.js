@@ -1,3 +1,14 @@
+const macroTargets = new Set([
+  'database',
+  'backend',
+  'frontend',
+  'testing',
+  'integration',
+  'documentation',
+  'deploy'
+]);
+
+
 // in cima a executor/executor.js
 const normalize = s => {
   if (typeof s !== 'string') return '';
@@ -21,21 +32,11 @@ const taskDecomposer    = require('../planner/taskDecomposer');
 
 // Mappa nome modulo → handler
 const moduleMap = {
-    fileSystemAgent,
-    databaseAgent,
-    codeAgent,
-    testAgent,
-    // decomposizione dei macro‑task
-    planner:            taskDecomposer,
-    analisi_requisiti:  taskDecomposer,
-    database:           taskDecomposer,
-    backend:            taskDecomposer,
-    frontend:           taskDecomposer,
-    testing:            taskDecomposer,
-    integration:        taskDecomposer,
-    documentation:      taskDecomposer,
-    deploy:             taskDecomposer
-  };
+  fileSystemAgent,
+  databaseAgent,
+  codeAgent,
+  testAgent
+};
 
 /**
  * Esegue una lista di task (macro o atomic).
@@ -44,36 +45,35 @@ async function runTasks(tasks) {
 
 
   for (const task of tasks) {
+    // normalizza il titolo
     task.task = normalize(task.task);
-    console.log(
-      `[Executor] Eseguo task: ${task.task} (${task.id}) → modulo: ${task.modulo_target}`
-    );
 
-    const handler = moduleMap[task.modulo_target];
-    if (!handler) {
-      console.warn(
-        `[Executor] Modulo non riconosciuto: ${task.modulo_target} (skipped)`
-      );
-      continue;
-    }
+    console.log(`[Executor] Eseguo task: ${task.task} (${task.id}) → modulo: ${task.modulo_target}`);
 
-    try {
-      if (handler === taskDecomposer) {
-        // macro‑task → atomic task
-        const atomicTasks = await handler.decompose(task);
+    // se è un macro‑task, passa al decomposer
+    if (macroTargets.has(task.modulo_target)) {
+      try {
+        const atomicTasks = await taskDecomposer.decompose(task);
         console.log(
           `[Executor] Decomposer ha generato ${atomicTasks.length} subtasks per ${task.id}`
         );
         await runTasks(atomicTasks);
-      } else {
-        // atomic task → agente specialistico
-        await handler.handle(task);
+      } catch (err) {
+        console.error(`[Executor] Errore decomposing ${task.id}:`, err);
       }
+      continue;
+    }
+
+    // altrimenti è atomic: trova l'agente
+    const handler = moduleMap[task.modulo_target];
+    if (!handler) {
+      console.warn(`[Executor] Modulo non riconosciuto: ${task.modulo_target} (skip)`);
+      continue;
+    }
+    try {
+      await handler.handle(task);
     } catch (err) {
-      console.error(
-        `[Executor] Errore durante l'esecuzione di ${task.id}:`,
-        err
-      );
+      console.error(`[Executor] Errore su ${task.id}:`, err);
     }
   }
 }

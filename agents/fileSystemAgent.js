@@ -4,6 +4,13 @@ const path = require('path');
 // Esportiamo direttamente la funzione handle marcata async
 module.exports.handle = async function(task) {
   const p = task.payload || {};
+
+
+  if (task.task === 'CREATE_DIR') {
+    console.info(`[FS Agent] CREATE_DIR payload=${JSON.stringify(task.payload, null, 2)} ---> in questo punto dovrebbe richiedere l'informazione all'executor`);
+    return;
+  }
+  
   
   if (task.task === 'GEN_FILE') {
     // payload può definire 'path' o 'file_name'

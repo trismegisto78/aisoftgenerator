@@ -14,12 +14,13 @@ const openai = new OpenAI({
  */
 async function decompose(task) {
   // Prepara prompt per il LLM
+  console.log("[taskDecomposer] task json:\n---------------"+JSON.stringify(task, null, 2)+"\n---------------\n")
   const prompt = `
-Ricevi questo macro‑task JSON:
+You receive this macro‑task JSON:
 ${JSON.stringify(task, null, 2)}
 
-Scomponilo in una lista di **atomic task**.  
-**OBBLIGATORIAMENTE** usa solo uno dei seguenti tipi (UPPER_SNAKE_CASE):
+Decompose it into a list of **atomic tasks**.  
+**MANDATORY**: use *only* the following atomic task types (UPPER_SNAKE_CASE):
 
   GEN_FILE, CREATE_DIR, GEN_DB_SCHEMA, CREATE_TABLE,
   CONFIGURE_CONNECTION, PREPARE_INSERT_STATEMENT, EXECUTE_INSERT,
@@ -27,16 +28,23 @@ Scomponilo in una lista di **atomic task**.
   INSTALL_DEPENDENCIES, CREATE_TEST_CASE, RUN_TESTS,
   PREPARE_TEST_ENVIRONMENT, ANALYZE_TEST_RESULTS, LOG_INSERTION
 
-Ogni atomic task deve avere ESATTAMENTE questi campi:
-- "id": stringa univoca (es. "${task.id}-01")
-- "task": uno dei tipi canonici elencati sopra
-- "descrizione": descrizione dettagliata
-- "stato": sempre "to_start"
-- "modulo_target": uno fra "fileSystemAgent", "databaseAgent", "codeAgent", "testAgent"
-- "dipendenze": array di id di altri atomic task
-- "payload": oggetto con le info tecniche necessarie
+Each atomic task must have *exactly* these fields:
+{
+  "id": "<macro-task-id>-NN",
+  "task": "<one of the types above>",
+  "descrizione": "<detailed description>",
+  "stato": "to_start",
+  "modulo_target": one of ["fileSystemAgent","databaseAgent","codeAgent","testAgent"],
+  "dipendenze": [<list of other task ids>],
+  "payload": { /* must include mandatory parameters:
+     - for GEN_FILE: path or file_name AND content
+     - for CREATE_API_ENDPOINT: route AND method
+     - for INSTALL_DEPENDENCIES: packages (array)
+     (and so on for each type)
+  */}
+}
 
-Rispondi **solo** con un array JSON valido, senza testo o commenti aggiuntivi.
+Respond *only* with a valid JSON array of atomic tasks, no extra text or markdown.
   `;
 
   // Chiamata LLM

@@ -15,28 +15,32 @@ async function start() {
   const inputUtente = readline.question("Descrivi il software che vuoi generare:\n> ");
 
   const prompt = `
-Sei un assistente che trasforma richieste testuali in task strutturati per la generazione automatica di software.
+Sei un assistente che trasforma la descrizione dell'utente in una lista di **macro‑task** JSON per la generazione automatica di software.
 
-Dato il seguente input utente:
-"${inputUtente}"
+Input utente:
+"""
+${inputUtente}
+"""
 
-Genera una lista JSON con massimo 6 oggetti, ognuno con questo schema fisso:
-
+Genera UNICAMENTE un **array JSON** (max 6 elementi), dove ogni oggetto ha esattamente questi campi:
 {
   "id": "task-001",
-  "task": "...",
-  "descrizione": "...",
+  "task": "Titolo breve del passo",
+  "descrizione": "Descrizione dettagliata del passo",
   "stato": "to_start",
-  "modulo_target": "...",
+  "modulo_target": usa esclusivamente un dei seguenti vocaboli ["database","backend","frontend","testing","integration","documentation","deploy"],
   "dipendenze": [],
-  "payload": { ... }
+  "payload": {}
 }
 
-Rispondi solo con un array JSON valido, senza commenti o testo aggiuntivo.
+**Assicurati** che “modulo_target” sia sempre uno dei valori:
+'database', 'backend', 'frontend', 'testing', 'integration', 'documentation', 'deploy'.
+
+Rispondi **solo** con l'array JSON, **nessun** testo aggiuntivo.
   `;
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-4o",
+    model: "gpt-4o-mini",
     messages: [{ role: "user", content: prompt }],
     temperature: 0.3
   });
