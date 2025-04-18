@@ -1,0 +1,90 @@
+diff --git a/executor/executor.js b/executor/executor.js
+index abcdef0..1234567 100644
+--- a/executor/executor.js
++++ b/executor/executor.js
+@@
+-const fileSystemAgent   = require('../agents/fileSystemAgent');
+-const databaseAgent     = require('../agents/databaseAgent');
+-const codeAgent         = require('../agents/codeAgent');
+-const testAgent         = require('../agents/testAgent');
+-const taskDecomposer    = require('../planner/taskDecomposer');  // nuovo modulo
++const fileSystemAgent   = require('../agents/fileSystemAgent');
++const databaseAgent     = require('../agents/databaseAgent');
++const codeAgent         = require('../agents/codeAgent');
++const testAgent         = require('../agents/testAgent');
++const taskDecomposer    = require('../planner/taskDecomposer');
+
+ // Mappa nome modulo → handler
+-const moduleMap = {
+-  fileSystemAgent,
+-  databaseAgent,
+-  codeAgent,
+-  testAgent,
+-  planner: taskDecomposer
+-};
++const moduleMap = {
++  // atomic-task agents
++  fileSystemAgent,
++  databaseAgent,
++  codeAgent,
++  testAgent,
++  // decomposizione dei macro‑task
++  planner:       taskDecomposer,
++  database:      taskDecomposer,
++  backend:       taskDecomposer,
++  frontend:      taskDecomposer,
++  testing:       taskDecomposer,
++  documentation: taskDecomposer
++};
+
+ /**
+  * Esegue una lista di task (macro o atomic).
+  */
+ async function runTasks(tasks) {
+   for (const task of tasks) {
+     console.log(
+       `[Executor] Eseguo task: ${task.task} (${task.id}) → modulo: ${task.modulo_target}`
+     );
+
+     const handler = moduleMap[task.modulo_target];
+     if (!handler) {
+       console.warn(
+         `[Executor] Modulo non riconosciuto: ${task.modulo_target} (skipped)`
+       );
+       continue;
+     }
+
+     try {
+-      if (task.modulo_target === 'planner') {
+-        // Scompone il macro‑task in atomic task
+-        const atomicTasks = await handler.decompose(task);
+-        console.log(
+-          `[Executor] Planner ha generato ${atomicTasks.length} sottotask per ${task.id}`
+-        );
+-        // Esegue ricorsivamente gli atomic task
+-        await runTasks(atomicTasks);
+-      } else {
+-        // Agente specialistico: riceve l'intero task
+-        await handler.handle(task);
+-      }
++      if (handler === taskDecomposer) {
++        // macro‑task → atomic task
++        const atomicTasks = await handler.decompose(task);
++        console.log(
++          `[Executor] Decomposer ha generato ${atomicTasks.length} subtasks per ${task.id}`
++        );
++        await runTasks(atomicTasks);
++      } else {
++        // atomic task → agente specialistico
++        await handler.handle(task);
++      }
+     } catch (err) {
+       console.error(
+         `[Executor] Errore durante l'esecuzione di ${task.id}:`,
+         err
+       );
+     }
+   }
+ }
+
+ module.exports = { runTasks };
